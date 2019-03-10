@@ -1,0 +1,42 @@
+{
+  "compileOnSave": true,
+  "compilerOptions": {
+    "target": "es6",
+    "module": "commonjs",
+    "outDir": "lib",
+    "strict": true,
+    "importHelpers": true,
+    "moduleResolution": "node",
+    "alwaysStrict": true,
+    "pretty": true,
+    "experimentalDecorators": true,
+    "downlevelIteration": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "types": [
+      "node",
+      "node-telegram-bot-api"
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    },
+    "lib": [
+      "es6",
+      "es5",
+      "es2015",
+      "dom",
+      "dom.iterable",
+      "es2018",
+      "esnext"
+    ]
+  },
+  "include": [
+    "/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "lib/**/*"
+  ]
+}

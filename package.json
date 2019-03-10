@@ -1,0 +1,22 @@
+{
+  "name": "tg-messenger",
+  "version": "1.0.0",
+  "main": "bot.js",
+  "author": "liloow",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "tsc -w & nodemon -e js lib/bot.js"
+  },
+  "dependencies": {
+    "facebook-chat-api": "^1.6.1",
+    "node-telegram-bot-api": "^0.30.0"
+  },
+  "devDependencies": {
+    "@types/node": "^11.10.5",
+    "@types/node-telegram-bot-api": "^0.30.4",
+    "nodemon": "^1.18.10",
+    "tslint": "^5.13.1",
+    "typescript": "^3.3.3333"
+  }
+}
