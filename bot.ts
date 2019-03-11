@@ -141,21 +141,24 @@ function onText(api: PApi) {
   })
 }
 
-async function sendResults(data: Array<{[key: string]: string | boolean}>) {
-  let messages = data.reduce(
-    (a, b) => {
-      a[0] && a[0].senderId === b.senderId ? (a[0].body += '\n' + b.body) : a.unshift(b)
+async function sendResults(data: ThreadHistoryItem[]) {
+  buildSingleLongMessage(data).forEach(msg => bot.sendMessage(chatId, msg.timestamp + '\n' + msg.body))
+}
+
+function buildSingleLongMessage(messages: ThreadHistoryItem[]) {
+  const MAX_LENGTH = 4096
+  let currentIndex = 0
+  return messages.reduce(
+    (a, b, i) => {
+      b.body = `${new Date(b.timestamp)} - ${b.senderID}: ${b.body}`
+      if (a[currentIndex] && a[currentIndex].body.length < MAX_LENGTH - b.body.length) {
+        a[currentIndex].body += '\n' + b.body
+        return a
+      }
+      currentIndex += 1
+      a[currentIndex] = b
       return a
     },
-    [] as any[],
+    [] as ThreadHistoryItem[],
   )
-  if (messages.length > 9) {
-    const groupBy = messages.length / 10
-    messages = messages.reduce((a, b, i) => {
-      const index = Math.floor(i / groupBy)
-      a[index] ? (a[index].body += '\n' + b.body) : (a[index] = b)
-      return a
-    }, [])
-  }
-  messages.reverse().forEach(msg => bot.sendMessage(chatId, msg.timestamp + '\n' + msg.body))
 }
