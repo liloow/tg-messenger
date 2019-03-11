@@ -6,7 +6,8 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "start": "tsc -w & nodemon -e js lib/bot.js"
+    "start": "tsc -w & nodemon -e js lib/bot.js",
+    "prod": "tsc -p tsconfig.json && forever start -l forever.log -o out.log -e err.log -f lib/bot.js &"
   },
   "dependencies": {
     "facebook-chat-api": "^1.6.1",
