@@ -153,7 +153,7 @@ async function sendResults(data: Array<{[key: string]: string | boolean}>) {
     const groupBy = messages.length / 10
     messages = messages.reduce((a, b, i) => {
       const index = Math.floor(i / groupBy)
-      a[index].body ? (a[index].body += '\n' + b.body) : (a[index] = b)
+      a[index] ? (a[index].body += '\n' + b.body) : (a[index] = b)
       return a
     }, [])
   }
