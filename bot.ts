@@ -1,4 +1,5 @@
 import fs from 'fs'
+import fetch from 'node-fetch'
 import {PApi, ThreadListItem, ThreadHistoryItem} from 'index.d'
 import {promisify} from 'util'
 import {multiInlineReply, inlineReply, promisifyApi, isDef} from './utils'
@@ -7,11 +8,12 @@ import TelegramBot from 'node-telegram-bot-api'
 
 const token = isDef(process.env.TELEGRAM_TOKEN, 'token') as string
 const chatId = isDef(process.env.TELEGRAM_CHAT_ID, 'chatId') as string
+const serviceChatId = isDef(process.env.TELEGRAM_SERVICE_CHAT_ID, 'serviceChatId') as string
 const credentials: any = {
   email: isDef(process.env.FB_EMAIL, 'email'),
   password: isDef(process.env.FB_PASSWORD, 'password'),
 }
-let currentMessengerConvo = ''
+let currentMessengerConvo: string = '100034595350702'
 // prettier-ignore
 const bot = new TelegramBot(token, {
   polling: true,
@@ -54,10 +56,26 @@ function botListeners(bot: TelegramBot, api: PApi) {
       bot.sendMessage(user, 'new message' + '\'' + data + '\'')
     }
   })
-  bot.on('message', msg => {
-    if (msg.text && msg.text[0] !== '/') {
-      api.sendMessage(msg.text, currentMessengerConvo)
-      bot.sendMessage(chatId, 'Message sent')
+  bot.on('message', async msg => {
+    try {
+      if (msg.photo) {
+        const id = await bot.getFileLink(msg.photo.reverse()[0].file_id)
+        console.log(id)
+        const path = '/tmp/' + id.replace(/^.+\//g, '')
+        const piped = await (await fetch(id)).body
+        piped.pipe(fs.createWriteStream(path))
+        piped.on('end', () => {
+          const mess = {attachment: [fs.createReadStream(path)]}
+          console.log(mess)
+          api.sendMessage(mess, currentMessengerConvo).then(r => fs.unlinkSync(path))
+        })
+      }
+      if (msg.text && msg.text[0] !== '/') {
+        api.sendMessage(msg.text, currentMessengerConvo)
+        bot.sendMessage(serviceChatId, 'Message sent')
+      }
+    } catch (error) {
+      console.error(error)
     }
   })
 }
@@ -83,7 +101,7 @@ async function getConvo(api: PApi, id: string, action: string) {
         console.log(el)
         return {
           body: `${userInfos[el.senderID].name}: ${el.body || el.snippet || el.attachments[0].url}`,
-          senderId: el.senderID,
+          senderID: el.senderID,
           isUnread: el.isUnread,
           timestamp: el.timestamp,
         }
@@ -120,15 +138,12 @@ function starConvo(api: PApi, favs: string[], id: string) {
 function createSnip(m: ThreadListItem) {
   return `Convo: *${m.name ? m.name : 'Multi'}*
 _${m.participants.length > 2 ? m.participants.map(p => p.name.replace(/(?!(.+\ ))[a-z]+/g, '')).join(', ') : ''}_
-
-*${m.unreadCount ? '\nNew Messages' : ''}*
-
+*${m.unreadCount ? '\nNew Messages\n' : ''}*
 _${m.snippet.slice(0, 100)}_`
 }
 function onText(api: PApi) {
   bot.onText(/\/all/, async (msg: any) => {
     const list = await getConvoList(api, 10)
-    console.log(list)
     list.forEach((m: ThreadListItem) => {
       bot.sendMessage(chatId, createSnip(m), {
         parse_mode: 'Markdown',
@@ -139,6 +154,26 @@ function onText(api: PApi) {
       })
     })
   })
+  bot.onText(/\/reset/, msg => (currentMessengerConvo = ''))
+  bot.onText(/\/current/, async msg => {
+    console.log(msg)
+    try {
+      if (currentMessengerConvo) {
+        const body = await api.getThreadInfo(currentMessengerConvo)
+        body.participantIDs.splice(body.participantIDs.indexOf('812117276'), 1)
+        body.participants = await api.getUserInfo(body.participantIDs)
+        if (body.participantIDs.length <= 2) {
+          body.name = (await api.getUserInfo(body.participantIDs[0]))[body.participantIDs[0]].name
+        }
+        bot.sendMessage(serviceChatId, createSnip(body as any), {parse_mode: 'Markdown'})
+        console.log(body)
+      } else {
+        bot.sendMessage(serviceChatId, 'null')
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  })
 }
 
 async function sendResults(data: ThreadHistoryItem[]) {
@@ -147,12 +182,19 @@ async function sendResults(data: ThreadHistoryItem[]) {
 
 function buildSingleLongMessage(messages: ThreadHistoryItem[]) {
   const MAX_LENGTH = 4096
-  let currentIndex = 0
+  let currentIndex = -1
   return messages.reduce(
-    (a, b, i) => {
-      b.body = `${new Date(b.timestamp)} - ${b.senderID}: ${b.body}`
+    (a, b) => {
+      console.log(a[currentIndex] ? a[currentIndex].body.length : MAX_LENGTH - b.body.length, b.body)
+      b.body = `${new Date(Number(b.timestamp)).toLocaleTimeString('en', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      })} - ${b.body}`
       if (a[currentIndex] && a[currentIndex].body.length < MAX_LENGTH - b.body.length) {
-        a[currentIndex].body += '\n' + b.body
+        const sameSender = a[currentIndex].senderID === b.senderID
+        a[currentIndex].senderID = b.senderID
+        a[currentIndex].body += '\n' + (sameSender ? '' : '\n') + b.body
         return a
       }
       currentIndex += 1

@@ -10,8 +10,11 @@
     "prod": "tsc -p tsconfig.json && forever start -l forever.log -o out.log -e err.log -f lib/bot.js &"
   },
   "dependencies": {
+    "@types/node-fetch": "^2.1.6",
     "facebook-chat-api": "^1.6.1",
-    "node-telegram-bot-api": "^0.30.0"
+    "node-fetch": "^2.3.0",
+    "node-telegram-bot-api": "^0.30.0",
+    "request": "^2.88.0"
   },
   "devDependencies": {
     "@types/node": "^11.10.5",
