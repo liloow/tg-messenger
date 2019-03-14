@@ -3,7 +3,8 @@ node_modules
 /grid
 /lib
 .env
-appstate.json
+appstate.json*
+
 # local env files
 .env.local
 .env.*.local

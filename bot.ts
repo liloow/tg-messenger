@@ -2,7 +2,7 @@ import fs from 'fs'
 import fetch from 'node-fetch'
 import {PApi, ThreadListItem, ThreadHistoryItem} from 'index.d'
 import {promisify} from 'util'
-import {multiInlineReply, inlineReply, promisifyApi, isDef} from './utils'
+import {multiInlineReply, inlineReply, promisifyApi, isDef, getNameFrom} from './utils'
 import login from 'facebook-chat-api'
 import TelegramBot from 'node-telegram-bot-api'
 
@@ -14,33 +14,30 @@ const credentials: any = {
   password: isDef(process.env.FB_PASSWORD, 'password'),
 }
 let currentMessengerConvo: string = '100034595350702'
-// prettier-ignore
 const bot = new TelegramBot(token, {
   polling: true,
-  // tslint:disable-next-line
-});
-(async () => {
-  const api = await promisifyApi(login, credentials)
+})
+
+async function init() {
+  try {
+    const api = await promisifyApi(login, credentials)
+    listen(api)
+    botListeners(bot, api)
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+function listen(api: PApi) {
   api.listen(async (err: Error, message: any) => {
-    try {
-      if (err) {
-        throw err
-      }
-      console.log(message)
-      const ret = await api.getUserInfo([message.threadID])
-      let name = ''
-      for (const prop in ret) {
-        if (ret.hasOwnProperty(prop) && ret[prop].name) {
-          name = ret[prop].name
-        }
-      }
-      onMessage(message, bot, name)
-    } catch (error) {
-      console.log(error)
+    if (err) {
+      throw err
     }
+    console.log(message)
+    const name = getNameFrom(await api.getUserInfo([message.threadID]))
+    onMessengerMessage(message, bot, name)
   })
-  botListeners(bot, api)
-})()
+}
 
 function botListeners(bot: TelegramBot, api: PApi) {
   onText(api)
@@ -80,7 +77,7 @@ function botListeners(bot: TelegramBot, api: PApi) {
   })
 }
 
-function onMessage(message: any, bot: TelegramBot, name: string) {
+function onMessengerMessage(message: any, bot: TelegramBot, name: string) {
   if (message.type === 'read_receipt') {
     bot.sendMessage(chatId, `(Messenger) New Message from ${name}`)
   } else {
@@ -204,3 +201,5 @@ function buildSingleLongMessage(messages: ThreadHistoryItem[]) {
     [] as ThreadHistoryItem[],
   )
 }
+
+init()

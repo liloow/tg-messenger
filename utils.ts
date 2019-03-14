@@ -20,25 +20,17 @@ const creds = () => {
     }
   }
 }
-export async function promisifyApi(login: any, credentials: {email: string; password: string}) {
-  try {
-    const api: Api = await promisify(login)(creds() ? creds() : credentials)
-    fs.writeFileSync('appstate.json', JSON.stringify(api.getAppState()))
-    return Object.keys(api).reduce(
-      (a, b) => {
-        if (typeof api[b] === 'function') {
-          a[b] = promisify(api[b])
-        } else {
-          a[b] = api[b]
-        }
-        return a
-      },
-      {} as PApi,
-    )
-  } catch (error) {
-    console.log(error)
-    throw error
-  }
+
+export async function promisifyApi(login: any, credentials: {email: string; password: string}): Promise<PApi> {
+  return new Promise((resolve, reject) => {
+    return login(creds() ? creds() : credentials, (err: Error, api: Api) => {
+      if (err) {
+        return reject(err)
+      }
+      fs.writeFileSync('appstate.json', JSON.stringify(api.getAppState()))
+      return resolve(transformIntoPromise(api))
+    })
+  })
 }
 
 export function isDef(data: any, name: string) {
@@ -46,4 +38,28 @@ export function isDef(data: any, name: string) {
     throw Error(`<${name}> is not defined.`)
   }
   return data
+}
+
+function transformIntoPromise(api: Api) {
+  return Object.keys(api).reduce(
+    (a, b) => {
+      if (typeof api[b] === 'function') {
+        a[b] = promisify(api[b])
+      } else {
+        a[b] = api[b]
+      }
+      return a
+    },
+    {} as PApi,
+  )
+}
+
+export function getNameFrom(userInfos: any) {
+  let name = ''
+  for (const prop in userInfos) {
+    if (userInfos.hasOwnProperty(prop) && userInfos[prop].name) {
+      name = userInfos[prop].name
+    }
+  }
+  return name
 }
