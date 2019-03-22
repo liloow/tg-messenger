@@ -136,7 +136,7 @@ function createSnip(m: ThreadListItem) {
   return `Convo: *${m.name ? m.name : 'Multi'}*
 _${m.participants.length > 2 ? m.participants.map(p => p.name.replace(/(?!(.+\ ))[a-z]+/g, '')).join(', ') : ''}_
 *${m.unreadCount ? '\nNew Messages\n' : ''}*
-_${m.snippet.slice(0, 100)}_`
+_${m.snippet ? m.snippet.slice(0, 100) : ''}_`
 }
 function onText(api: PApi) {
   bot.onText(/\/all/, async (msg: any) => {
