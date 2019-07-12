@@ -1,0 +1,35 @@
+diff --git a/node_modules/facebook-chat-api/index.js b/node_modules/facebook-chat-api/index.js
+index 6dbaa07..b45e96d 100644
+--- a/node_modules/facebook-chat-api/index.js
++++ b/node_modules/facebook-chat-api/index.js
+@@ -357,7 +357,7 @@ function loginHelper(appState, email, password, globalOptions, callback) {
+         clientid : ctx.clientID,
+         viewer_uid : ctx.userID,
+         uid : ctx.userID,
+-        state : 'active',
++        state : 'offline',
+         idle : 0,
+         cap : 8,
+         msgs_recv: 0
+@@ -393,7 +393,7 @@ function loginHelper(appState, email, password, globalOptions, callback) {
+         clientid : ctx.clientID,
+         viewer_uid : ctx.userID,
+         uid : ctx.userID,
+-        state : 'active',
++        state : 'offline',
+         idle : 0,
+         cap : 8,
+         msgs_recv:0,
+diff --git a/node_modules/facebook-chat-api/src/listen.js b/node_modules/facebook-chat-api/src/listen.js
+index dc3cecb..a07f4a1 100644
+--- a/node_modules/facebook-chat-api/src/listen.js
++++ b/node_modules/facebook-chat-api/src/listen.js
+@@ -29,7 +29,7 @@ module.exports = function(defaultFuncs, api, ctx) {
+     clientid: ctx.clientID,
+     viewer_uid: ctx.userID,
+     uid: ctx.userID,
+-    state: "active",
++    state: "offline",
+     idle: 0,
+     cap: "8",
+     msgs_recv: msgsRecv,
