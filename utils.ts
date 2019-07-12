@@ -5,10 +5,17 @@ import {Api, PApi} from 'index.d'
 export const inlineReply = (text: string, data: any) => {
   return {reply_markup: {inline_keyboard: [[{text, callback_data: data}]]}}
 }
-export const multiInlineReply = (arr: Array<{text: string; data: any; row: number}>) => {
+export const multiInlineReply = (arr: Array<{text: string; data: any; row: number; url?: string}>) => {
   const matrix: Array<Array<{text: string; callback_data: any}>> = [[]]
   for (const b of arr) {
-    matrix[b.row] = [...(matrix[b.row] || []), {text: b.text, callback_data: b.data}]
+    matrix[b.row] = [
+      ...(matrix[b.row] || []),
+      {
+        text: b.text,
+        callback_data: b.data,
+        url: b.url,
+      },
+    ]
   }
   return {inline_keyboard: matrix}
 }

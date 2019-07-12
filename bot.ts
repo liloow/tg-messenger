@@ -1,10 +1,10 @@
+import TelegramBot from 'node-telegram-bot-api'
 import fs from 'fs'
 import fetch from 'node-fetch'
 import {PApi, ThreadListItem, ThreadHistoryItem} from 'index.d'
 import {promisify} from 'util'
 import {multiInlineReply, inlineReply, promisifyApi, isDef, getNameFrom} from './utils'
 import login from 'facebook-chat-api'
-import TelegramBot from 'node-telegram-bot-api'
 
 const token = isDef(process.env.TELEGRAM_TOKEN, 'token') as string
 const chatId = isDef(process.env.TELEGRAM_CHAT_ID, 'chatId') as string
@@ -17,6 +17,15 @@ let currentMessengerConvo: string = '100034595350702'
 const bot = new TelegramBot(token, {
   polling: true,
 })
+bot.clear = async function() {
+  if (!this.lastId) {
+    this.lastId = 0
+  }
+  const {message_id} = await this.sendMessage(chatId, 'clear')
+  const arr = Array.from(Array(message_id - this.lastId), (el, i) => this.lastId + i + 1)
+  const p = arr.map(el => this.deleteMessage(chatId, el))
+  return (this.lastId = message_id)
+}
 
 async function init() {
   try {
@@ -33,18 +42,18 @@ function listen(api: PApi) {
     if (err) {
       throw err
     }
-    console.log(message)
-    const name = getNameFrom(await api.getUserInfo([message.threadID]))
+    console.log('MESSAGE: ', message)
+    const name = getNameFrom(await api.getUserInfo([message.senderID]))
     onMessengerMessage(message, bot, name)
   })
 }
 
 function botListeners(bot: TelegramBot, api: PApi) {
   onText(api)
-
-  bot.on('callback_query', msg => {
+  bot.on('callback_query', (msg: TelegramBot.CallbackQuery) => {
     const user = msg.from.id
     const data = msg.data
+
     if (data && /^\$.+\$/g.test(data)) {
       const id = data.split('$') as ['', string, string]
       console.log(id)
@@ -53,7 +62,7 @@ function botListeners(bot: TelegramBot, api: PApi) {
       bot.sendMessage(user, 'new message' + '\'' + data + '\'')
     }
   })
-  bot.on('message', async msg => {
+  bot.on('message', async (msg: TelegramBot.Message) => {
     try {
       if (msg.photo) {
         const id = await bot.getFileLink(msg.photo.reverse()[0].file_id)
@@ -77,14 +86,25 @@ function botListeners(bot: TelegramBot, api: PApi) {
   })
 }
 
-function onMessengerMessage(message: any, bot: TelegramBot, name: string) {
-  if (message.type === 'read_receipt') {
-    bot.sendMessage(chatId, `(Messenger) New Message from ${name}`)
+async function onMessengerMessage(message: any, bot: TelegramBot, name: string) {
+  if (message.attachments && message.attachments.length) {
+    const data = await Promise.all(message.attachments.map((el: any) => fetchItems(el.url)))
+    const res = await bot.sendMessage(chatId, '(Messenger) ' + name + 'sent a file')
+    data.forEach((item: any, i) =>
+      bot.sendDocument(
+        chatId,
+        item,
+        {
+          reply_to_message_id: res.message_id,
+        },
+        {filename: message.attachments[i].filename},
+      ),
+    )
   } else {
     bot.sendMessage(
       chatId,
       name + ' (Messenger): ' + message.body,
-      inlineReply('✏️ Reply to a ' + name, message.threadID),
+      inlineReply('✏️ Reply to ' + name, message.threadID),
     )
   }
 }
@@ -97,10 +117,11 @@ async function getConvo(api: PApi, id: string, action: string) {
       const data = (await api.getThreadHistory(id, tInfos.unreadCount + 20, null)).map((el: ThreadHistoryItem) => {
         console.log(el)
         return {
-          body: `${userInfos[el.senderID].name}: ${el.body || el.snippet || el.attachments[0].url}`,
+          body: `${userInfos[el.senderID].name}: ${el.body || el.snippet}`,
           senderID: el.senderID,
           isUnread: el.isUnread,
           timestamp: el.timestamp,
+          attachments: el.attachments || [],
         }
       })
       currentMessengerConvo = id
@@ -140,13 +161,14 @@ _${m.snippet ? m.snippet.slice(0, 100) : ''}_`
 }
 function onText(api: PApi) {
   bot.onText(/\/all/, async (msg: any) => {
-    const list = await getConvoList(api, 10)
+    const list = await getConvoList(api, 10, false)
     list.forEach((m: ThreadListItem) => {
-      bot.sendMessage(chatId, createSnip(m), {
+      bot.sendMessage(serviceChatId, createSnip(m), {
         parse_mode: 'Markdown',
         reply_markup: multiInlineReply([
           {text: 'Load', data: '$fetch$' + m.threadID, row: 1},
           {text: 'Mark read', data: '$mark$' + m.threadID, row: 1},
+          {text: 'Open', data: '', url: 't.me/joinchat/CJSpvBXV1lT9yPxkxu7SPw', row: 2},
         ]),
       })
     })
@@ -174,7 +196,19 @@ function onText(api: PApi) {
 }
 
 async function sendResults(data: ThreadHistoryItem[]) {
-  buildSingleLongMessage(data).forEach(msg => bot.sendMessage(chatId, msg.timestamp + '\n' + msg.body))
+  bot.clear()
+  buildSingleLongMessage(data).forEach(async msg => {
+    if (msg.url && msg.filename) {
+      const {message_id} = await bot.sendMessage(chatId, '(Messenger) ' + msg.name + 'sent a file')
+      return bot.sendDocument(
+        chatId,
+        await fetchItems(msg.url),
+        {reply_to_message_id: message_id},
+        {filename: msg.filename},
+      )
+    }
+    bot.sendMessage(chatId, msg.timestamp + '\n' + msg.body)
+  })
 }
 
 function buildSingleLongMessage(messages: ThreadHistoryItem[]) {
@@ -182,6 +216,10 @@ function buildSingleLongMessage(messages: ThreadHistoryItem[]) {
   let currentIndex = -1
   return messages.reduce(
     (a, b) => {
+      if (b.attachments.length) {
+        b.attachments.forEach(el => (a[currentIndex++] = {...el, name: b.senderID}))
+        return a
+      }
       console.log(a[currentIndex] ? a[currentIndex].body.length : MAX_LENGTH - b.body.length, b.body)
       b.body = `${new Date(Number(b.timestamp)).toLocaleTimeString('en', {
         hour: '2-digit',
@@ -200,6 +238,15 @@ function buildSingleLongMessage(messages: ThreadHistoryItem[]) {
     },
     [] as ThreadHistoryItem[],
   )
+}
+
+function fetchItems(url: string): Promise<Buffer> {
+  return new Promise(async (resolve, reject) => {
+    const buff: Uint8Array[] = []
+    const data = (await fetch(url)).body
+    data.on('data', (chunk: Buffer) => buff.push(chunk))
+    data.on('end', () => resolve(Buffer.concat(buff)))
+  })
 }
 
 init()
