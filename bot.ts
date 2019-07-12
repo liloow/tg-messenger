@@ -17,19 +17,19 @@ let currentMessengerConvo: string = '100034595350702'
 const bot = new TelegramBot(token, {
   polling: true,
 })
-bot.clear = async function() {
-  if (!this.lastId) {
-    this.lastId = 0
-  }
-  const {message_id} = await this.sendMessage(chatId, 'clear')
-  const arr = Array.from(Array(message_id - this.lastId), (el, i) => this.lastId + i + 1)
-  const p = arr.map(el => this.deleteMessage(chatId, el))
-  return (this.lastId = message_id)
-}
 
+const clear: any = async () => {
+  if (!clear.lastId) {
+    clear.lastId = 0
+  }
+  const {message_id} = await bot.sendMessage(chatId, 'clear')
+  const arr = Array.from(Array(message_id - clear.lastId), (el, i) => clear.lastId + i + 1)
+  const p = arr.map(el => bot.deleteMessage(chatId, el))
+  clear.lastId = message_id
+}
 async function init() {
   try {
-    const api = await promisifyApi(login, credentials)
+    const api = (await promisifyApi(login, credentials)) as PApi
     listen(api)
     botListeners(bot, api)
   } catch (error) {
@@ -196,7 +196,7 @@ function onText(api: PApi) {
 }
 
 async function sendResults(data: ThreadHistoryItem[]) {
-  bot.clear()
+  clear()
   buildSingleLongMessage(data).forEach(async msg => {
     if (msg.url && msg.filename) {
       const {message_id} = await bot.sendMessage(chatId, '(Messenger) ' + msg.name + 'sent a file')

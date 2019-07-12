@@ -6,7 +6,7 @@ export const inlineReply = (text: string, data: any) => {
   return {reply_markup: {inline_keyboard: [[{text, callback_data: data}]]}}
 }
 export const multiInlineReply = (arr: Array<{text: string; data: any; row: number; url?: string}>) => {
-  const matrix: Array<Array<{text: string; callback_data: any}>> = [[]]
+  const matrix: Array<Array<{text: string; callback_data: any; url?: string}>> = [[]]
   for (const b of arr) {
     matrix[b.row] = [
       ...(matrix[b.row] || []),
@@ -28,7 +28,7 @@ const creds = () => {
   }
 }
 
-export async function promisifyApi(login: any, credentials: {email: string; password: string}): Promise<PApi> {
+export async function promisifyApi(login: any, credentials: {email: string; password: string}): Promise<PApi | {}> {
   return new Promise((resolve, reject) => {
     return login(creds() ? creds() : credentials, (err: Error, api: Api) => {
       if (err) {

@@ -122,4 +122,7 @@ export declare interface ThreadHistoryItem {
   messageReactions: string[]
   isSponsored: boolean
   snippet?: string
+  url?: string
+  filename?: string
+  name?: string
 }
