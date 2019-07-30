@@ -7,21 +7,22 @@
   "private": true,
   "scripts": {
     "start": "tsc -w & nodemon -e js lib/bot.js",
-    "build": "tsc -p tsconfig.json",
-    "postinstall": "if [ "$MESSENGER_STATUS" == "offline" ]; then  patch package; fi"
+    "debug": "tsc -w & nodemon -e js --exec 'node --inspect' lib/bot.js",
+    "prod": "tsc -p tsconfig.json && forever start -l forever.log -o out.log -e err.log -f -a lib/bot.js &",
+    "postinstall": "patch-package"
   },
   "dependencies": {
-    "@types/node-fetch": "^2.1.6",
-    "axios": "^0.18.0",
+    "axios": "^0.19.0",
     "facebook-chat-api": "^1.6.1",
-    "node-fetch": "^2.3.0",
+    "node-fetch": "^2.6.0",
     "node-telegram-bot-api": "^0.30.0",
     "patch-package": "^6.1.2",
     "request": "^2.88.0"
   },
   "devDependencies": {
     "@types/node": "^11.10.5",
-    "@types/node-telegram-bot-api": "^0.30.4",
+    "@types/node-fetch": "^2.1.6",
+    "@types/node-telegram-bot-api": "^0.31.0",
     "nodemon": "^1.18.10",
     "tslint": "^5.13.1",
     "typescript": "^3.3.3333"

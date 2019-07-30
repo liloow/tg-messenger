@@ -13,7 +13,7 @@
     "downlevelIteration": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "sourceMap": true,
+    "sourceMap": false,
     "baseUrl": ".",
     "types": [
       "node",
@@ -26,8 +26,6 @@
       "es6",
       "es5",
       "es2015",
-      "dom",
-      "dom.iterable",
       "es2018",
       "esnext"
     ]
